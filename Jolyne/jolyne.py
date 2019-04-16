@@ -8,35 +8,35 @@ import config as cfg
 
 logging.basicConfig(filename='logfile.log', level=logging.INFO)
 
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
-def get_watched_terms():
-    with open("watched_terms.txt", "r") as f:
-        watched_terms = f.read()
-        watched_terms = watched_terms.split("\n")
-        watched_terms = list(filter(None, watched_terms))
-    logging.info("Current watched terms loaded: ", watched_terms)
-    return watched_terms
+
+def read_text_file(file_name):
+    file_location = os.path.join(__location__, file_name)
+    with open(file_location, "r") as f:
+        data = f.read()
+        data = data.split("\n")
+        data = list(filter(None, data))
+    logging.info("Read file %s, Data: %s " % (file_location, data))
+    return data
 
 
 def update_replied_to(posts_replied_to):
-    # Write our updated list back to the file
-    with open("posts_replied_to.txt", "w") as f:
+    file_location = os.path.join(__location__, "posts_replied_to.txt")
+    with open(file_location, "w") as f:
         for post_id in posts_replied_to:
             f.write(post_id + "\n")
 
 
 def get_replied_to():
-    # Have we run this code before? If not, create an empty list
-    if not os.path.isfile("posts_replied_to.txt"):
+    file_location = os.path.join(__location__, "posts_replied_to.txt")
+    if not os.path.isfile(file_location):
         posts_replied_to = []
 
     # If we have run the code before, load the list of posts we have replied to
     else:
-        # Read the file into a list and remove any empty values
-        with open("posts_replied_to.txt", "r") as f:
-            posts_replied_to = f.read()
-            posts_replied_to = posts_replied_to.split("\n")
-            posts_replied_to = list(filter(None, posts_replied_to))
+        posts_replied_to = read_text_file("posts_replied_to.txt")
 
     return posts_replied_to
 
@@ -49,7 +49,7 @@ def extract_search_terms(watched_terms, comment):
 
 def run_bot(reddit, options):
     posts_replied_to = get_replied_to()
-    watched_terms = get_watched_terms()
+    watched_terms = read_text_file("terms.txt")
     subreddits = reddit.subreddit(options["subreddits"])
 
     for submission in subreddits.hot(limit=10):
@@ -62,8 +62,6 @@ def run_bot(reddit, options):
             if comment.id not in posts_replied_to:
                 terms = extract_search_terms(watched_terms, comment)
                 if len(terms) > 0:
-                    # Reply to the post
-                    # submission.reply("BOT SHOUTING TEST MESSAGE USING PYTHON")
                     logging.info("Bot found terms in submission: %s, comment: %s " % (
                         submission.title, comment.id))
                     logging.info("Body: %s " % comment.body)
@@ -91,6 +89,7 @@ if __name__ == "__main__":
             logging.warn("Rate limit exceeded. Sleeping for 1 minute.")
             time.sleep(60)
         except KeyboardInterrupt:
+            logging.info("Exiting...")
             sys.exit()
         except Exception as e:
             logging.exception(e)
