@@ -4,3 +4,9 @@ __pycache__
 # Config
 *.ini
 !*.example*
+
+# Dev config
+.pylintrc
+
+# Temporary files
+posts_replied_to.txt

@@ -1,6 +1,7 @@
 from os import path
 import configparser
 
+
 class Config:
     def __init__(self):
         self.reddit = None
@@ -16,6 +17,7 @@ def load_config():
 
     return config
 
+
 def read_config_file():
     conf = configparser.ConfigParser()
     file_path = get_config_ini_path()
@@ -26,6 +28,7 @@ def read_config_file():
         return None
 
     return conf
+
 
 def get_config_ini_path():
     base_path = path.dirname(__file__)
