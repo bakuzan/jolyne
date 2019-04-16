@@ -1,6 +1,7 @@
 import praw
 import time
 import os
+import sys
 import re
 import logging
 import login
@@ -52,7 +53,7 @@ def run_bot(reddit, options):
     watched_terms = read_text_file("terms.txt")
     subreddits = reddit.subreddit(options["subreddits"])
 
-    for submission in subreddits.hot(limit=options["submission_limit"]):
+    for submission in subreddits.hot(limit=int(options["submission_limit"])):
         logging.info("Submission: %s with %s comments " % (submission.title,
                                                            submission.num_comments))
 
