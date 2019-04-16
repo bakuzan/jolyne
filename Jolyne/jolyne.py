@@ -18,7 +18,7 @@ def read_text_file(file_name):
         data = f.read()
         data = data.split("\n")
         data = list(filter(None, data))
-    logging.info("Read file %s, Data: %s " % (file_location, data))
+    logging.info("Read file %s" % (file_location))
     return data
 
 
@@ -43,7 +43,7 @@ def get_replied_to():
 
 def extract_search_terms(watched_terms, comment):
     comment_text = comment.body.lower()
-    matches = [term for term in comment_text for term in watched_terms]
+    matches = [s for s in watched_terms if s in comment_text]
     return matches
 
 
@@ -52,9 +52,9 @@ def run_bot(reddit, options):
     watched_terms = read_text_file("terms.txt")
     subreddits = reddit.subreddit(options["subreddits"])
 
-    for submission in subreddits.hot(limit=10):
-        logging.info("Submission > ", submission.title,
-                     submission.num_comments)
+    for submission in subreddits.hot(limit=options["submission_limit"]):
+        logging.info("Submission: %s with %s comments " % (submission.title,
+                                                           submission.num_comments))
 
         submission.comments.replace_more(limit=0)
         for comment in submission.comments.list():
@@ -64,8 +64,8 @@ def run_bot(reddit, options):
                 if len(terms) > 0:
                     logging.info("Bot found terms in submission: %s, comment: %s " % (
                         submission.title, comment.id))
-                    logging.info("Body: %s " % comment.body)
-                    logging.info("Terms: %s " % terms)
+                    logging.info("Body: %s " % (comment.body))
+                    logging.info("Terms: %s " % (terms))
 
                     # Store the current id into our list
                     posts_replied_to.append(comment.id)
