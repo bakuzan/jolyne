@@ -1,10 +1,12 @@
 from os import path
+import logging
 import configparser
 
 
 class Config:
     def __init__(self):
         self.reddit = None
+        self.options = None
 
 
 def load_config():
@@ -15,6 +17,10 @@ def load_config():
         d = data["reddit"]
         config.reddit = d
 
+    if "reddit" in data:
+        d = data["options"]
+        config.options = d
+
     return config
 
 
@@ -24,7 +30,7 @@ def read_config_file():
     success = conf.read(file_path)
 
     if len(success) == 0:
-        print("Failed to load config")
+        logging.warn("Failed to load config from %s" % file_path)
         return None
 
     return conf

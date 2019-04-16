@@ -1,9 +1,10 @@
 import praw
 import os
+import logging
 
 
 def login(config):
-    print("Logging in..", config)
+    logging.info("Logging in..")
     r = None
 
     try:
@@ -13,9 +14,10 @@ def login(config):
             client_id=config["client_id"],
             client_secret=config["client_secret"],
             user_agent=config["user_agent"])
-        print("Logged in!")
+        logging.info("Logged in successful")
 
-    except:
-        print("Failed to log in!")
+    except Exception as e:
+        logging.exception()
+        logging.error("Failed to log in")
 
     return r

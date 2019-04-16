@@ -10,3 +10,4 @@ __pycache__
 
 # Temporary files
 posts_replied_to.txt
+*.log

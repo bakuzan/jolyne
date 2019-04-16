@@ -2,8 +2,11 @@ import praw
 import time
 import os
 import re
+import logging
 import login
 import config as cfg
+
+logging.basicConfig(filename='logfile.log', level=logging.INFO)
 
 
 def get_watched_terms():
@@ -11,6 +14,7 @@ def get_watched_terms():
         watched_terms = f.read()
         watched_terms = watched_terms.split("\n")
         watched_terms = list(filter(None, watched_terms))
+    logging.info("Current watched terms loaded: ", watched_terms)
     return watched_terms
 
 
@@ -43,13 +47,14 @@ def extract_search_terms(watched_terms, comment):
     return matches
 
 
-def run_bot(reddit):
+def run_bot(reddit, options):
     posts_replied_to = get_replied_to()
     watched_terms = get_watched_terms()
-    subreddit = reddit.subreddit('anime')
+    subreddits = reddit.subreddit(options["subreddits"])
 
-    for submission in subreddit.hot(limit=10):
-        print(submission.title, submission.num_comments)
+    for submission in subreddits.hot(limit=10):
+        logging.info("Submission > ", submission.title,
+                     submission.num_comments)
 
         submission.comments.replace_more(limit=0)
         for comment in submission.comments.list():
@@ -59,9 +64,10 @@ def run_bot(reddit):
                 if len(terms) > 0:
                     # Reply to the post
                     # submission.reply("BOT SHOUTING TEST MESSAGE USING PYTHON")
-                    print("Bot found terms in: ", submission.title, comment.id)
-                    print("Body > ", comment.body)
-                    print("Terms > ", terms)
+                    logging.info("Bot found terms in submission: %s, comment: %s " % (
+                        submission.title, comment.id))
+                    logging.info("Body: %s " % comment.body)
+                    logging.info("Terms: %s " % terms)
 
                     # Store the current id into our list
                     posts_replied_to.append(comment.id)
@@ -75,11 +81,18 @@ if __name__ == "__main__":
             c = cfg.load_config()
             reddit = login.login(c.reddit)
 
-            print("\nFetching comments..")
             while True:
-                run_bot(reddit)
+                logging.info("Running bot, Fetching comments..")
+                run_bot(reddit, c.options)
                 time.sleep(10)
 
+        except praw.exceptions.APIException as e:
+            logging.warn(e)
+            logging.warn("Rate limit exceeded. Sleeping for 1 minute.")
+            time.sleep(60)
+        except KeyboardInterrupt:
+            sys.exit()
         except Exception as e:
-            print(str(e.__class__.__name__) + ": " + str(e))
+            logging.exception(e)
+            logging.error(str(e.__class__.__name__) + ": Sleeping for 15s")
             time.sleep(15)
