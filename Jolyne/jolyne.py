@@ -27,8 +27,10 @@ def extract_search_terms(watched_terms, comment):
 
 
 def run_bot(reddit, created_since, db, options):
-    posts_replied_to = db.get_replied_to()
+    new_posts_replied_to = []
+    posts_replied_to = db.get_replied_to(created_since)
     watched_terms = db.get_terms()
+
     comments = reddit.subreddit(options["subreddits"]).comments(
         limit=int(options["comment_limit"]))
 
@@ -54,10 +56,11 @@ def run_bot(reddit, created_since, db, options):
                 logging.info("Terms found: %s " % (terms))
 
                 # Store the current id into our list
-                posts_replied_to.append(comment.id)
+                new_posts_replied_to.append(
+                    (comment.id, format_timestamp(comment_created_at)))
 
     db.update_previous_runtime(created_utc)
-    db.update_replied_to(posts_replied_to)
+    db.update_replied_to(new_posts_replied_to)
     return created_utc
 
 
@@ -71,8 +74,8 @@ if __name__ == "__main__":
             reddit = login.login(c.reddit)
 
             # Get Db
-            db = JolyneDb(c.db)
-            created_utc = db.get_previous_runtime(opts)
+            db = JolyneDb(c.db, opts)
+            created_utc = db.get_previous_runtime()
 
             while True:
                 logging.info("Running bot, Fetching comments since %s" %

@@ -3,19 +3,22 @@ from logging import info
 import psycopg2
 import os
 
-__location__ = os.path.realpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
+def earliest_run(opts):
+    hours_ago = int(opts["search_start_hours_ago"])
+    return datetime.utcnow() - timedelta(hours=hours_ago)
 
 
 class JolyneDb:
-    def __init__(self, opts):
+    def __init__(self, db_opts, opts):
+        self.__db_opts = db_opts
         self.__opts = opts
         self.__conn = None
         self.__cur = None
         self.connect()
 
     def connect(self):
-        db = self.__opts
+        db = self.__db_opts
         self.__conn = psycopg2.connect(
             user=db["user"], password=db["password"],
             dbname=db["name"], port=db["port"])
@@ -27,15 +30,14 @@ class JolyneDb:
         self.__conn.close()
         info("Db disconnected")
 
-    def get_previous_runtime(self, opts):
+    def get_previous_runtime(self):
         self.__cur.execute("SELECT created_utc from comment_time")
         created_utc = self.__cur.fetchall()
 
         if (len(created_utc) > 0):
             created_utc = datetime(created_utc[0][0])
         else:
-            created_utc = datetime.utcnow(
-            ) - timedelta(hours=int(opts["search_start_hours_ago"]))
+            created_utc = earliest_run(self.__opts)
 
         return created_utc
 
@@ -44,31 +46,24 @@ class JolyneDb:
         self.__cur.execute("SELECT created_utc from comment_time")
         self.__conn.commit()
 
-    def get_replied_to(self):
-        file_location = os.path.join(__location__, "posts_replied_to.txt")
-        if not os.path.isfile(file_location):
-            posts_replied_to = []
-
-        # If we have run the code before, load the list of posts we have replied to
-        else:
-            posts_replied_to = self.__read_text_file("posts_replied_to.txt")
-
-        return posts_replied_to
+    def get_replied_to(self, last_runtime):
+        ts = earliest_run(self.__opts)
+        self.__cur.execute(
+            "SELECT comment_id from replied_to where found_at > '%s'" % (ts))
+        posts_replied_to = self.__cur.fetchall()
+        return [s for (s,) in posts_replied_to]
 
     def update_replied_to(self, posts_replied_to):
-        file_location = os.path.join(__location__, "posts_replied_to.txt")
-        with open(file_location, "w") as f:
-            for post_id in posts_replied_to:
-                f.write(post_id + "\n")
+        if len(posts_replied_to) > 0:
+            args_str = ','.join(self.__cur.mogrify(
+                "(%s, %s)", x).decode('utf-8') for x in posts_replied_to)
+            query = "INSERT INTO replied_to (comment_id, found_at) VALUES " + \
+                args_str
+            print('query', query)
+            self.__cur.execute(query)
+            self.__conn.commit()
 
     def get_terms(self):
-        return self.__read_text_file("terms.txt")
-
-    def __read_text_file(self, file_name):
-        file_location = os.path.join(__location__, file_name)
-        with open(file_location, "r") as f:
-            data = f.read()
-            data = data.split("\n")
-            data = list(filter(None, data))
-        info("Read file %s" % (file_location))
-        return data
+        self.__cur.execute("SELECT term from terms")
+        terms = self.__cur.fetchall()
+        return [s for (s,) in terms]
