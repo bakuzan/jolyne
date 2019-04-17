@@ -7,6 +7,7 @@ class Config:
     def __init__(self):
         self.reddit = None
         self.options = None
+        self.db = None
 
 
 def load_config():
@@ -17,9 +18,13 @@ def load_config():
         d = data["reddit"]
         config.reddit = d
 
-    if "reddit" in data:
+    if "options" in data:
         d = data["options"]
         config.options = d
+
+    if "db" in data:
+        d = data["db"]
+        config.db = d
 
     return config
 

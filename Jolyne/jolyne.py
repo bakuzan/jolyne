@@ -7,11 +7,9 @@ import re
 import logging
 import login
 import config as cfg
+from db import JolyneDb
 
 logging.basicConfig(filename='logfile.log', level=logging.INFO)
-
-__location__ = os.path.realpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 
 def log_info(inp):
@@ -22,44 +20,15 @@ def format_timestamp(inp):
     return inp.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def read_text_file(file_name):
-    file_location = os.path.join(__location__, file_name)
-    with open(file_location, "r") as f:
-        data = f.read()
-        data = data.split("\n")
-        data = list(filter(None, data))
-    logging.info("Read file %s" % (file_location))
-    return data
-
-
-def update_replied_to(posts_replied_to):
-    file_location = os.path.join(__location__, "posts_replied_to.txt")
-    with open(file_location, "w") as f:
-        for post_id in posts_replied_to:
-            f.write(post_id + "\n")
-
-
-def get_replied_to():
-    file_location = os.path.join(__location__, "posts_replied_to.txt")
-    if not os.path.isfile(file_location):
-        posts_replied_to = []
-
-    # If we have run the code before, load the list of posts we have replied to
-    else:
-        posts_replied_to = read_text_file("posts_replied_to.txt")
-
-    return posts_replied_to
-
-
 def extract_search_terms(watched_terms, comment):
     comment_text = comment.body.lower()
     matches = [s for s in watched_terms if s in comment_text]
     return matches
 
 
-def run_bot(reddit, created_since, options):
-    posts_replied_to = get_replied_to()
-    watched_terms = read_text_file("terms.txt")
+def run_bot(reddit, created_since, db, options):
+    posts_replied_to = db.get_replied_to()
+    watched_terms = db.get_terms()
     comments = reddit.subreddit(options["subreddits"]).comments(
         limit=int(options["comment_limit"]))
 
@@ -87,7 +56,8 @@ def run_bot(reddit, created_since, options):
                 # Store the current id into our list
                 posts_replied_to.append(comment.id)
 
-    update_replied_to(posts_replied_to)
+    db.update_previous_runtime(created_utc)
+    db.update_replied_to(posts_replied_to)
     return created_utc
 
 
@@ -96,15 +66,18 @@ if __name__ == "__main__":
         try:
             c = cfg.load_config()
             opts = c.options
+
+            # Login to reddit
             reddit = login.login(c.reddit)
-            # Start searching in last x hours
-            created_utc = datetime.utcnow(
-            ) - timedelta(hours=int(opts["search_start_hours_ago"]))
+
+            # Get Db
+            db = JolyneDb(c.db)
+            created_utc = db.get_previous_runtime(opts)
 
             while True:
                 logging.info("Running bot, Fetching comments since %s" %
                              format_timestamp(created_utc))
-                created_utc = run_bot(reddit, created_utc, opts)
+                created_utc = run_bot(reddit, created_utc, db, opts)
                 time.sleep(10)
 
         except praw.exceptions.APIException as e:
@@ -112,6 +85,7 @@ if __name__ == "__main__":
             logging.warn("Rate limit exceeded. Sleeping for 1 minute.")
             time.sleep(60)
         except KeyboardInterrupt:
+            db.disconnect()
             logging.info("Exiting...")
             sys.exit()
         except Exception as e:
