@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import praw
 import time
 import os
@@ -11,6 +12,14 @@ logging.basicConfig(filename='logfile.log', level=logging.INFO)
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
+
+def log_info(inp):
+    logging.info(inp.encode('utf-8'))
+
+
+def format_timestamp(inp):
+    return inp.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def read_text_file(file_name):
@@ -48,41 +57,54 @@ def extract_search_terms(watched_terms, comment):
     return matches
 
 
-def run_bot(reddit, options):
+def run_bot(reddit, created_since, options):
     posts_replied_to = get_replied_to()
     watched_terms = read_text_file("terms.txt")
-    subreddits = reddit.subreddit(options["subreddits"])
+    comments = reddit.subreddit(options["subreddits"]).comments(
+        limit=int(options["comment_limit"]))
 
-    for submission in subreddits.hot(limit=int(options["submission_limit"])):
-        logging.info("Submission: %s with %s comments " % (submission.title,
-                                                           submission.num_comments))
+    for idx, comment in enumerate(comments):
+        comment_created_at = datetime.utcfromtimestamp(comment.created_utc)
 
-        submission.comments.replace_more(limit=0)
-        for comment in submission.comments.list():
-            # If we haven't replied to this post before
-            if comment.id not in posts_replied_to:
-                terms = extract_search_terms(watched_terms, comment)
-                if len(terms) > 0:
-                    logging.info("Bot found terms in submission: %s, comment: %s " % (
-                        submission.title, comment.id))
-                    logging.info("Body: %s " % (comment.body))
-                    logging.info("Terms: %s " % (terms))
+        if idx == 0:
+            created_utc = comment_created_at
 
-                    # Store the current id into our list
-                    posts_replied_to.append(comment.id)
+        if comment_created_at < created_since:
+            continue
+
+        logging.info("Comment: %s, by %s @ %s" %
+                     (comment.id, comment.author, format_timestamp(comment_created_at)))
+
+        # If we haven't replied to this post before
+        if comment.id not in posts_replied_to:
+            terms = extract_search_terms(watched_terms, comment)
+            if len(terms) > 0:
+                logging.info(
+                    "Bot found terms @ https://www.reddit.com%s" % comment.permalink)
+                log_info("Comment body: %s" % (comment.body))
+                logging.info("Terms found: %s " % (terms))
+
+                # Store the current id into our list
+                posts_replied_to.append(comment.id)
 
     update_replied_to(posts_replied_to)
+    return created_utc
 
 
 if __name__ == "__main__":
     while True:
         try:
             c = cfg.load_config()
+            opts = c.options
             reddit = login.login(c.reddit)
+            # Start searching in last x hours
+            created_utc = datetime.utcnow(
+            ) - timedelta(hours=int(opts["search_start_hours_ago"]))
 
             while True:
-                logging.info("Running bot, Fetching comments..")
-                run_bot(reddit, c.options)
+                logging.info("Running bot, Fetching comments since %s" %
+                             format_timestamp(created_utc))
+                created_utc = run_bot(reddit, created_utc, opts)
                 time.sleep(10)
 
         except praw.exceptions.APIException as e:
