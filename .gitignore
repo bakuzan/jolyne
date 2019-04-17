@@ -3,7 +3,8 @@ __pycache__
 
 # Config
 *.ini
-!*.example*
+*.env
+
 
 # Dev config
 .pylintrc

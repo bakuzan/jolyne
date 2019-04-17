@@ -1,6 +1,5 @@
-from os import path
+from os import path, environ
 import logging
-import configparser
 
 
 class Config:
@@ -12,35 +11,26 @@ class Config:
 
 def load_config():
     config = Config()
-    data = read_config_file()
 
-    if "reddit" in data:
-        d = data["reddit"]
-        config.reddit = d
+    config.reddit = {
+        client_id: environ.get('REDDIT_CLIENT_ID'),
+        client_secret: environ.get('REDDIT_CLIENT_SECRET'),
+        password: environ.get('REDDIT_PASSWORD'),
+        username: environ.get('REDDIT_USERNAME'),
+        user_agent: environ.get('REDDIT_USER_AGENT')
+    }
 
-    if "options" in data:
-        d = data["options"]
-        config.options = d
+    config.options = {
+        subreddits: environ.get('OPT_SUBREDDITS'),
+        comment_limit: environ.get('OPT_COMMENT_LIMIT'),
+        search_start_hours_ago: environ.get('OPT_SEARCH_START_HOURS_AGO')
+    }
 
-    if "db" in data:
-        d = data["db"]
-        config.db = d
+    config.db = {
+        user: environ.get('DB_USER'),
+        password: environ.get('DB_PASSWORD'),
+        port: environ.get('DB_PORT'),
+        name: environ.get('DB_NAME')
+    }
 
     return config
-
-
-def read_config_file():
-    conf = configparser.ConfigParser()
-    file_path = get_config_ini_path()
-    success = conf.read(file_path)
-
-    if len(success) == 0:
-        logging.warn("Failed to load config from %s" % file_path)
-        return None
-
-    return conf
-
-
-def get_config_ini_path():
-    base_path = path.dirname(__file__)
-    return path.abspath(path.join(base_path, "..", "config.ini"))
