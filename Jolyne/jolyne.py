@@ -4,16 +4,10 @@ import time
 import os
 import sys
 import re
-import logging
+from logger import logger, log_info
 import login
 import config as cfg
 from db import JolyneDb
-
-logging.basicConfig(filename='logfile.log', level=logging.INFO)
-
-
-def log_info(inp):
-    logging.info(inp.encode('utf-8'))
 
 
 def format_timestamp(inp):
@@ -43,17 +37,17 @@ def run_bot(reddit, created_since, db, options):
         if comment_created_at < created_since:
             continue
 
-        logging.info("Comment: %s, by %s @ %s" %
-                     (comment.id, comment.author, format_timestamp(comment_created_at)))
+        logger.info("Comment: %s, by %s @ %s" %
+                    (comment.id, comment.author, format_timestamp(comment_created_at)))
 
         # If we haven't replied to this post before
         if comment.id not in posts_replied_to:
             terms = extract_search_terms(watched_terms, comment)
             if len(terms) > 0:
-                logging.info(
+                logger.info(
                     "Bot found terms @ https://www.reddit.com%s" % comment.permalink)
                 log_info("Comment body: %s" % (comment.body))
-                logging.info("Terms found: %s " % (terms))
+                logger.info("Terms found: %s " % (terms))
 
                 # Store the current id into our list
                 new_posts_replied_to.append(
@@ -78,20 +72,20 @@ if __name__ == "__main__":
             created_utc = db.get_previous_runtime()
 
             while True:
-                logging.info("Running bot, Fetching comments since %s" %
-                             format_timestamp(created_utc))
+                logger.info("Running bot, Fetching comments since %s" %
+                            format_timestamp(created_utc))
                 created_utc = run_bot(reddit, created_utc, db, opts)
                 time.sleep(10)
 
         except praw.exceptions.APIException as e:
-            logging.warn(e)
-            logging.warn("Rate limit exceeded. Sleeping for 1 minute.")
+            logger.warn(e)
+            logger.warn("Rate limit exceeded. Sleeping for 1 minute.")
             time.sleep(60)
         except KeyboardInterrupt:
             db.disconnect()
-            logging.info("Exiting...")
+            logger.info("Exiting...")
             sys.exit()
         except Exception as e:
-            logging.exception(e)
-            logging.error(str(e.__class__.__name__) + ": Sleeping for 15s")
+            logger.exception(e)
+            logger.error(str(e.__class__.__name__) + ": Sleeping for 15s")
             time.sleep(15)
