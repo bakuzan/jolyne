@@ -57,7 +57,7 @@ class JolyneDb:
                 "(%s, %s)", x).decode('utf-8') for x in posts_replied_to)
             query = "INSERT INTO replied_to (comment_id, found_at) VALUES " + \
                 args_str
-            print('query', query)
+
             self.__cur.execute(query)
             self.__conn.commit()
 
@@ -65,3 +65,13 @@ class JolyneDb:
         self.__cur.execute("SELECT term from terms")
         terms = self.__cur.fetchall()
         return [s for (s,) in terms]
+
+    def get_blacklist(self):
+        self.__cur.execute("SELECT authour from blacklist")
+        blacklist = self.__cur.fetchall()
+        return [s for (s,) in blacklist]
+
+    def opted_out(self, authour):
+        query = "INSERT INTO blacklist (authour) VALUES ('%s')" % authour
+        self.__cur.execute(query)
+        self.__conn.commit()

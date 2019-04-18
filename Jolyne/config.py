@@ -1,5 +1,10 @@
-from os import path, environ
-import logging
+from os import environ
+from os.path import abspath, join, dirname
+from dotenv import load_dotenv
+
+if "IS_HEROKU" not in environ:
+    dotenv_path = abspath(join(dirname(__file__), '..', '.env'))
+    load_dotenv(dotenv_path)
 
 
 class Config:
