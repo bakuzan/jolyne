@@ -27,6 +27,11 @@ def check_mail(db):
             logger.info("Blacklisted user /u/%s at their request." % authour)
         mail.mark_read()
 
+def create_reply_string(redcfg):
+    reply_string = "Is that a Jojo reference?"
+    reply_footer = ("\n\n__\n[^^Click ^^me ^^to ^^be ^^blacklisted.](https://www.reddit.com/message/compose/?to={}&subject=Blacklist+me&message=!blacklist+(don%27t+reply+to+my+comments+anymore\\))".format(redcfg["username"]))
+    return reply_string + reply_footer
+
 
 def extract_search_terms(watched_terms, comment):
     comment_text = comment.body.lower()
@@ -71,6 +76,8 @@ def run_bot(reddit, created_since, db, redcfg, optcfg):
                 log_info("Comment body: %s" % (comment.body))
                 logger.info("Terms found: %s " % (terms))
 
+                reply_string = create_reply_string(redcfg)
+                print("REPLY > ", reply_string)
                 # Store the current id into our list
                 new_posts_replied_to.append(
                     (comment.id, format_timestamp(comment_created_at)))
