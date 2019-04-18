@@ -27,6 +27,7 @@ def load_config():
     }
 
     config.db = {
+        'url': environ.get('DATABASE_URL'),
         'user': environ.get('DB_USER'),
         'password': environ.get('DB_PASSWORD'),
         'port': environ.get('DB_PORT'),

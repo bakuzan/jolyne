@@ -19,9 +19,7 @@ class JolyneDb:
 
     def connect(self):
         db = self.__db_opts
-        self.__conn = psycopg2.connect(
-            user=db["user"], password=db["password"],
-            dbname=db["name"], port=db["port"])
+        self.__conn = psycopg2.connect(db['url'])
         self.__cur = self.__conn.cursor()
         info("Db connected")
 
