@@ -4,7 +4,7 @@ __pycache__
 # Config
 *.ini
 *.env
-
+env.sh
 
 # Dev config
 .pylintrc
